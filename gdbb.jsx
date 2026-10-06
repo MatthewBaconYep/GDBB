@@ -2492,7 +2492,12 @@ const LOADING_MESSAGES = [
 ];
 
 function App() {
-  const [loadingMsg] = useState(() => LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
+  const [loadingMsg] = useState(() => {
+    // Step through the messages in order, one per load, remembering the place in this browser.
+    const i = (parseInt(safeLS.get("gdbb-load-msg"), 10) + 1) % LOADING_MESSAGES.length || 0;
+    safeLS.set("gdbb-load-msg", String(i));
+    return LOADING_MESSAGES[i];
+  });
   const [phase, setPhase] = useState("loading"); // loading | auth | ready | error
   const [held, setHeld] = useState(true); // keep the loading screen up for a minimum time
   useEffect(() => { const t = setTimeout(() => setHeld(false), 3000); return () => clearTimeout(t); }, []);
