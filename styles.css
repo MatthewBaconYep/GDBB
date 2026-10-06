@@ -853,3 +853,6 @@ button.goal-chip:hover { background: #faf9ff; border-color: var(--accent); box-s
 .auth-links .btn-ghost:hover { background: transparent; }
 .btn-block { width: 100%; }
 .auth { max-width: 420px; } .auth-brand h1 { white-space: nowrap; font-size: 24px; }
+
+/* Keep the scrolling list clear of the card edge. */
+.home-scroll .carousel .mc { padding-bottom: 16px; }

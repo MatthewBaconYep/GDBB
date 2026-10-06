@@ -2482,6 +2482,8 @@ function NewPasswordSheet({ onClose, toast }) {
 // ---------- app ----------
 function App() {
   const [phase, setPhase] = useState("loading"); // loading | auth | ready | error
+  const [held, setHeld] = useState(true); // keep the loading screen up for a minimum time
+  useEffect(() => { const t = setTimeout(() => setHeld(false), 3000); return () => clearTimeout(t); }, []);
   const [session, setSession] = useState(null);
   const [local, setLocal] = useState(() => PROTO || safeLS.get("gdbb-mode") === "local" || /[?&]local\b/.test(location.search));
   const [data, setData] = useState(null);
@@ -2660,7 +2662,7 @@ function App() {
     else loadFor(userRef.current);
   }
 
-  if (phase === "loading") return <div className="app"><Glitter /><div className="loading"><Mark size={56} /><p style={{ marginTop: 12 }}>What a cool guy Bacon is...</p></div></div>;
+  if (phase === "loading" || held) return <div className="app"><Glitter /><div className="loading"><Mark size={56} /><p style={{ marginTop: 12 }}>What a cool guy Bacon is...</p></div></div>;
   if (phase === "auth") return <AuthScreen onLocal={() => { safeLS.set("gdbb-mode", "local"); setLocal(true); setPhase("loading"); }} />;
   if (phase === "error") return (
     <div className="app"><Glitter /><div className="loading">
