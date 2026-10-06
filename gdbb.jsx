@@ -2660,7 +2660,7 @@ function App() {
     else loadFor(userRef.current);
   }
 
-  if (phase === "loading") return <div className="app"><Glitter /><div className="loading"><Mark size={56} /><p style={{ marginTop: 12 }}>Counting the glitter…</p></div></div>;
+  if (phase === "loading") return <div className="app"><Glitter /><div className="loading"><Mark size={56} /><p style={{ marginTop: 12 }}>What a cool guy Bacon is...</p></div></div>;
   if (phase === "auth") return <AuthScreen onLocal={() => { safeLS.set("gdbb-mode", "local"); setLocal(true); setPhase("loading"); }} />;
   if (phase === "error") return (
     <div className="app"><Glitter /><div className="loading">
