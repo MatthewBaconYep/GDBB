@@ -1,22 +1,24 @@
 # Handoff notes
 
-Status: the first build is done. It's a desktop web app only. It was tested in Chromium at desktop width in device-only mode (`?local`). The engine tests pass (`node test/engine.test.js`). Supabase sign-in and sync have not been run against the live project yet.
+Status: live at https://gdbb.plantalog.com (GitHub Pages from `main`, root). Sign-in uses the Plantalog Supabase project; budgets live in table `gdbb_budgets` (one row per user, row-level security). `supabase/schema.sql` has been run.
 
-The app in use today is a Claude artifact ("Glitter Dolphiggy Biggy Bank"). It is built from these same files: `gdbb.jsx` compiled with Babel, then `styles.css`, `engine.js` and the compiled JS inlined into one page, with `window.GDBB_ARTIFACT = true`. In that mode the budget lives in the artifact's shared database: one `budget/meta` document holds everything except items, and each item is its own `items/<id>` document. Saving diffs the new state against the last one saved. Moving to gdbb.plantalog.com later means exporting a backup from Settings and restoring it there. `window.GDBB_PROTOTYPE = true` still gives the example-data demo mode.
+## How it's built
+- `index.html` loads React 18, Babel standalone and supabase-js from CDNs, then `engine.js` and `gdbb.jsx`. No build step.
+- `engine.js`: pure forecast math. Run `node test/engine.test.js` after any change; add a test for any new rule.
+- `gdbb.jsx`: all UI and storage. New data fields need defaults in `migrate()` so saved budgets keep loading.
+- `styles.css`: tokens on `:root`; later rules override earlier ones (the file grew by appending), so search for the last rule touching a selector before editing.
+- Deploy: bump `version.txt`, `HERE` in `index.html`, and every `?v=` query string, then push to `main`. Open tabs reload themselves when `version.txt` changes.
 
-## Design source of truth
-Visual iteration happens on the Claude Design canvas "Glitter Dolphiggy Biggy Bank". It has these screens: Home list, Home calendar, Add expense, Quick spend, Overview, Setup, and a shared Header. When the canvas changes, carry the changes into `styles.css` and `gdbb.jsx`. The canvas uses the same hex values as the `:root` tokens. Figures on the canvas are examples.
+## Current behavior worth knowing
+- Plan starts October 2026 (`PLAN_START` in gdbb.jsx). Home List and Calendar cover the plan's years plus next year.
+- Expenses add up (month and dated items both count in full). Income month items are goals; dated income in the same category counts toward them.
+- Budget expenses (`budget: true`, month scope) hold `purchases: [{id, date, name, amount}]`; a month counts the budget, or actual spending if over.
+- Paid with: income, savings, or both (`savingsPart` is the savings share).
+- Goals: target or ongoing; contributions continue past target; `skip[month]` turns one month off; `off: [{from, to}]` hides a goal from a month on.
+- Interest is forecast as balance x APY / 12; a posted interest item replaces it. A recorded ending balance (`anchors[month]`) resets the forecast from that month.
+- Category colors: `categories[].color`.
 
-## Go-live checklist
-1. Run `supabase/schema.sql` in the Plantalog Supabase project.
-2. Add `https://gdbb.plantalog.com` to the Supabase Auth redirect URLs.
-3. GitHub Pages: deploy from `main`, root. DNS: `CNAME gdbb → matthewbaconyep.github.io`.
-4. Create Kelly's account.
-5. Sign in on two devices, edit on one, and check that the other device picks up the change (version check on focus, and the conflict banner).
-
-## Known limits and ideas
-- Business income is spread evenly across months. Weddings are seasonal, so the planner could use a month-by-month booking pattern.
-- Goal balances track contributions only. Paying for the goal (like the surgery) from its savings category doesn't reduce goal progress.
-- An "actual balance" correction goes entirely to the default savings category.
-- Editing a series with "All" keeps one-off amount changes. "This & later" clears them from that point on.
-- The whole budget is saved as one JSON row, and the last save wins after the conflict prompt.
+## Ideas / known limits
+- Anyone with a Plantalog account can sign in and gets their own empty budget. Remove "Create an account" in `AuthScreen` if only Kelly should sign up.
+- Business income is spread evenly across months; weddings are seasonal.
+- Last save wins after the "changed on another device" prompt.
