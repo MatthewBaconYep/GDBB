@@ -2480,7 +2480,19 @@ function NewPasswordSheet({ onClose, toast }) {
 }
 
 // ---------- app ----------
+const LOADING_MESSAGES = [
+  "What a cool guy Bacon is...",
+  "Right this way, Glitter Queen...",
+  "WHAT IS WRONG WITH ME TODAY?!...",
+  "I'll have the shrimp tacos...",
+  "What even is money? ¯\\_(ツ)_/¯...",
+  "What the hell's that's goin' on out there? POPPERRRRRS...",
+  "Point for me...",
+  "Budgeting isn't hard, fucktard...",
+];
+
 function App() {
+  const [loadingMsg] = useState(() => LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
   const [phase, setPhase] = useState("loading"); // loading | auth | ready | error
   const [held, setHeld] = useState(true); // keep the loading screen up for a minimum time
   useEffect(() => { const t = setTimeout(() => setHeld(false), 3000); return () => clearTimeout(t); }, []);
@@ -2662,7 +2674,7 @@ function App() {
     else loadFor(userRef.current);
   }
 
-  if (phase === "loading" || held) return <div className="app"><Glitter /><div className="loading"><Mark size={56} /><p style={{ marginTop: 12 }}>What a cool guy Bacon is...</p></div></div>;
+  if (phase === "loading" || held) return <div className="app"><Glitter /><div className="loading"><Mark size={56} /><p style={{ marginTop: 12 }}>{loadingMsg}</p></div></div>;
   if (phase === "auth") return <AuthScreen onLocal={() => { safeLS.set("gdbb-mode", "local"); setLocal(true); setPhase("loading"); }} />;
   if (phase === "error") return (
     <div className="app"><Glitter /><div className="loading">
