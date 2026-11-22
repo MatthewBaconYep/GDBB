@@ -9,11 +9,12 @@ const E = window.GDBB;
 // ---------- formatting ----------
 const usd0 = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0, minimumFractionDigits: 0 });
 const usd2 = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2, minimumFractionDigits: 2 });
+let SHOW_CENTS = false; // Setup > Settings > Show Cents; set by App on every render
 function money(n, opts) {
   const v = Number(n) || 0;
   // Default: whole dollars. cents: true always shows cents; "auto" shows them only when there are any.
   const c = opts && opts.cents;
-  const cents = c === true ? true : c === "auto" ? Math.round(Math.abs(v) * 100) % 100 !== 0 : false;
+  const cents = SHOW_CENTS || c === true ? true : c === "auto" ? Math.round(Math.abs(v) * 100) % 100 !== 0 : false;
   const s = (cents ? usd2 : usd0).format(Math.abs(v));
   if (opts && opts.sign) return (v < 0 ? "−" : v > 0 ? "+" : "") + s;
   return (v < 0 ? "−" : "") + s;
@@ -69,7 +70,7 @@ function defaultData() {
     v: 1,
     settings: {
       startMonth: PLAN_START, horizonMonths: 36, rates: [{ from: PLAN_START, rate: 3.9 }],
-      defaultSavingsId: settlement.id, surplusToSavings: true, businessTaxPct: 25,
+      defaultSavingsId: settlement.id, surplusToSavings: true, businessTaxPct: 25, showCents: false,
     },
     categories: [settlement, emergency, retirement, medical, college, travel, photo, job, other, interest, ...exp],
     types: [
@@ -2365,6 +2366,7 @@ function SettingsCard({ data, update, fc, session, local, onSignOut, toast }) {
         {rates.length > 1 && (
           <div className="tiny muted">{rates.map(r => `${r.rate}% from ${monthName(r.from, true)}`).join(" · ")}</div>
         )}
+        <Switch label="Show Cents" checked={s.showCents} onChange={v => update(d => { d.settings.showCents = v; })} />
         <div className="hr" />
         <div className="row wrap">
           {!PROTO && <button className="btn btn-secondary btn-sm" onClick={exportJson}><Icon name="download" size={16} />Download backup</button>}
@@ -2663,6 +2665,7 @@ function App() {
     });
   }, []);
 
+  SHOW_CENTS = !!(data && data.settings && data.settings.showCents);
   const fc = useMemo(() => (data ? E.forecast(data) : null), [data]);
   const open = useCallback(s => setSheet(s), []);
   const close = useCallback(() => setSheet(null), []);
