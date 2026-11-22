@@ -39,6 +39,7 @@ function stampLabel(iso) {
 }
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 const clone = o => JSON.parse(JSON.stringify(o));
+const r2 = n => Math.round((Number(n) || 0) * 100) / 100;
 const parseMoney = s => { const n = parseFloat(String(s).replace(/[^0-9.\-]/g, "")); return isFinite(n) ? Math.round(n * 100) / 100 : 0; };
 const today = () => E.todayStr();
 const thisMonth = () => today().slice(0, 7);
@@ -321,17 +322,19 @@ function Field({ label, children, hint, style }) {
   );
 }
 function MoneyInput({ value, onChange, placeholder, ariaLabel, onBlur, autoFocus }) {
-  const [txt, setTxt] = useState(value === "" || value === null || value === undefined ? "" : String(value));
+  // With Show Cents on, a stored value shows two decimals (1200 becomes 1200.00).
+  const fmt = v => (v === "" || v === null || v === undefined ? "" : SHOW_CENTS && isFinite(Number(v)) ? Number(v).toFixed(2) : String(v));
+  const [txt, setTxt] = useState(fmt(value));
   const last = useRef(value);
   useEffect(() => {
-    if (value !== last.current) { last.current = value; setTxt(value === "" || value === null || value === undefined ? "" : String(value)); }
+    if (value !== last.current) { last.current = value; setTxt(fmt(value)); }
   }, [value]);
   return (
     <div className={"money-wrap" + (txt !== "" ? " has-value" : "")}>
       <span className="cur">$</span>
       <input className="input num" inputMode="decimal" value={txt} placeholder={placeholder || "0"} aria-label={ariaLabel} autoFocus={autoFocus}
         onChange={e => { setTxt(e.target.value); const v = e.target.value.trim() === "" ? "" : parseMoney(e.target.value); last.current = v; onChange(v); }}
-        onBlur={onBlur} />
+        onBlur={e => { if (SHOW_CENTS && txt.trim() !== "") setTxt(fmt(parseMoney(txt))); if (onBlur) onBlur(e); }} />
     </div>
   );
 }
@@ -494,7 +497,7 @@ function itemToForm(it) {
     freq: r.freq || "single", every: r.every || (r.freq === "weeks" ? 2 : 1), days: r.days && r.days.length ? r.days.slice() : [1, 15],
     endMode: e.mode || "never", until: e.until || "", count: e.count || 12,
     fund: it.fund || "income", savingsCatId: it.savingsCatId || "", notes: it.notes || "", misc: !!it.misc, budget: !!it.budget,
-    savPart: it.fund === "both" ? Math.round(E.num(it.savingsPart)) : "", incPart: it.fund === "both" ? Math.round(E.num(it.amount) - E.num(it.savingsPart)) : "",
+    savPart: it.fund === "both" ? r2(E.num(it.savingsPart)) : "", incPart: it.fund === "both" ? r2(E.num(it.amount) - E.num(it.savingsPart)) : "",
   };
 }
 function formToFields(f, data) {
@@ -763,8 +766,8 @@ function ItemEditor({ data, update, init, onClose, toast }) {
               </Field>
               <Field label="Amount" style={{ width: 130 }}><WholeDollarInput value={f.amount} ariaLabel="Amount" onChange={v => {
                 if (f.fund !== "both") return set({ amount: v });
-                const a = Math.round(E.num(v)), sp = Math.min(Math.round(E.num(f.savPart)), a);
-                set({ amount: v, savPart: sp || "", incPart: a - sp });
+                const a = r2(E.num(v)), sp = Math.min(r2(E.num(f.savPart)), a);
+                set({ amount: v, savPart: sp || "", incPart: r2(a - sp) });
               }} /></Field>
               {f.kind === "expense" && !isMisc && (
                 <Field label="Budget">
@@ -876,10 +879,10 @@ function ItemEditor({ data, update, init, onClose, toast }) {
                   {f.fund === "both" && (
                     <div className="row" style={{ gap: 12, alignItems: "flex-end" }}>
                       <Field label="Income" style={{ width: 120 }}>
-                        <WholeDollarInput value={f.incPart} ariaLabel="From income" onChange={v => { const a = Math.round(E.num(f.amount)); const n = v === "" ? 0 : Math.min(v, a); set({ incPart: v === "" ? "" : n, savPart: a - n }); }} />
+                        <WholeDollarInput value={f.incPart} ariaLabel="From income" onChange={v => { const a = r2(E.num(f.amount)); const n = v === "" ? 0 : Math.min(v, a); set({ incPart: v === "" ? "" : n, savPart: r2(a - n) }); }} />
                       </Field>
                       <Field label="Savings" style={{ width: 120 }}>
-                        <WholeDollarInput value={f.savPart} ariaLabel="From savings" onChange={v => { const a = Math.round(E.num(f.amount)); const n = v === "" ? 0 : Math.min(v, a); set({ savPart: v === "" ? "" : n, incPart: a - n }); }} />
+                        <WholeDollarInput value={f.savPart} ariaLabel="From savings" onChange={v => { const a = r2(E.num(f.amount)); const n = v === "" ? 0 : Math.min(v, a); set({ savPart: v === "" ? "" : n, incPart: r2(a - n) }); }} />
                       </Field>
                     </div>
                   )}
@@ -1717,10 +1720,28 @@ function ovTone(pct, range) {
   if (pct > range[1] + 0.005) return "over";
   return "ok";
 }
-// Whole dollars only, shown as "$1,234" right against the sign.
+// Whole dollars, shown as "$1,234". With Show Cents on it takes cents and shows "$1,234.00".
 function WholeDollarInput({ value, onChange, ariaLabel }) {
-  // A zero shows as the grey "$0" hint rather than a typed value.
-  const n = value === "" || value === null || value === undefined || Math.round(E.num(value)) === 0 ? "" : Math.round(E.num(value));
+  const [edit, setEdit] = useState(null); // raw text while the field is focused (Show Cents only)
+  const blank = value === "" || value === null || value === undefined || r2(E.num(value)) === 0;
+  if (SHOW_CENTS) {
+    const clean = t => {
+      let [a, ...b] = String(t).replace(/[^0-9.]/g, "").split(".");
+      a = a.slice(0, 9);
+      return b.length ? a + "." + b.join("").slice(0, 2) : a;
+    };
+    const emit = raw => onChange(raw === "" ? "" : r2(parseFloat(raw) || 0));
+    return (
+      <input className="input ov-dollar num" inputMode="decimal" aria-label={ariaLabel} placeholder="$0.00"
+        value={edit !== null ? (edit === "" ? "" : "$" + edit) : blank ? "" : usd2.format(E.num(value))}
+        onFocus={() => setEdit(blank ? "" : String(r2(E.num(value))))}
+        onBlur={() => setEdit(null)}
+        onKeyDown={e => { if (e.key.length === 1 && !/[0-9.]/.test(e.key) && !e.metaKey && !e.ctrlKey) e.preventDefault(); }}
+        onPaste={e => { e.preventDefault(); const raw = clean(e.clipboardData.getData("text")); setEdit(raw); emit(raw); }}
+        onChange={e => { const raw = clean(e.target.value); setEdit(raw); emit(raw); }} />
+    );
+  }
+  const n = blank ? "" : Math.round(E.num(value));
   const txt = n === "" ? "" : "$" + n.toLocaleString("en-US");
   return (
     <input className="input ov-dollar num" inputMode="numeric" aria-label={ariaLabel} placeholder="$0" value={txt}
