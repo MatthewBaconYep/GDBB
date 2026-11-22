@@ -2687,6 +2687,7 @@ function App() {
   }, []);
 
   SHOW_CENTS = !!(data && data.settings && data.settings.showCents);
+  useEffect(() => { document.documentElement.classList.toggle("show-cents", SHOW_CENTS); }, [SHOW_CENTS]);
   const fc = useMemo(() => (data ? E.forecast(data) : null), [data]);
   const open = useCallback(s => setSheet(s), []);
   const close = useCallback(() => setSheet(null), []);
