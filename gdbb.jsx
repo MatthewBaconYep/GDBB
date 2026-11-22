@@ -1891,7 +1891,7 @@ function OverviewView({ data, update }) {
         };
   return (
     <div className="ov-sheet">
-      <div className="ov-sec">
+      <div className="ov-sec nw-sec">
         <div className="ov-head"><span className="t">Net worth</span></div>
         {listRows("assets", "Assets", "Car value, property, business", "Asset")}
         {listRows("investments", "Investments", "401K, non-retirement, all investments", "Investment")}
